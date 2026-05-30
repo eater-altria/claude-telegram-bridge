@@ -1,0 +1,16 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "claude-telegram-bridge",
+  "description": "Fork of the official Claude Code Telegram plugin with persistent typing, default 👀 reaction, and local-skill command discovery.",
+  "owner": {
+    "name": "eater-altria"
+  },
+  "plugins": [
+    {
+      "name": "telegram",
+      "description": "Telegram messaging bridge for Claude Code with built-in access control, persistent typing indicator, 👀 ack reaction, and a command menu that auto-discovers your local skills. Manage pairing/allowlists via /telegram:access.",
+      "category": "productivity",
+      "source": "."
+    }
+  ]
+}
