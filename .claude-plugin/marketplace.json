@@ -10,7 +10,7 @@
       "name": "telegram",
       "description": "Telegram messaging bridge for Claude Code with built-in access control, persistent typing indicator, 👀 ack reaction, and a command menu that auto-discovers your local skills. Manage pairing/allowlists via /telegram:access.",
       "category": "productivity",
-      "source": "."
+      "source": "./telegram"
     }
   ]
 }
