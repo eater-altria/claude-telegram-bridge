@@ -1,0 +1,11 @@
+# Dependencies
+node_modules/
+
+# Secrets / runtime state (the bot token lives outside the repo, but never commit one)
+.env
+.env.*
+*.pem
+
+# Logs / OS cruft
+*.log
+.DS_Store
