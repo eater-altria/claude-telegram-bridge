@@ -406,10 +406,10 @@ const PHOTO_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp'])
 // interval per chat_id from the moment an inbound message is delivered to Claude
 // until the reply tool finishes sending everything (text chunks + files).
 const TYPING_REFRESH_MS = 4000
-// Backstop only — typing also stops on reply/react/edit_message and on a
-// permission_request (Claude is then blocked on the user). This deadline fires
-// solely on a turn that produces NO outbound at all, bounding any stray
-// indicator instead of leaking.
+// Backstop only — typing stops on reply/react/edit_message. It deliberately
+// persists across a permission prompt (the turn resumes on approval). This
+// deadline bounds the rare turn that produces no outbound at all, or a
+// permission prompt the user never answers, instead of leaking.
 const TYPING_MAX_MS = 5 * 60 * 1000
 
 type TypingTimers = { refresh: ReturnType<typeof setInterval>; deadline: ReturnType<typeof setTimeout> }
@@ -494,9 +494,9 @@ mcp.setNotificationHandler(
       .text('✅ Allow', `perm:allow:${request_id}`)
       .text('❌ Deny', `perm:deny:${request_id}`)
     for (const chat_id of access.allowFrom) {
-      // Claude is now blocked awaiting the allow/deny decision — it isn't
-      // "typing", so tear down any keepalive for these chats.
-      stopTyping(chat_id)
+      // Keep the typing keepalive running across the permission prompt — the
+      // turn is still in progress and resumes the moment the user approves, so
+      // the indicator should persist (not vanish) until Claude actually replies.
       void bot.api.sendMessage(chat_id, text, { reply_markup: keyboard }).catch(e => {
         process.stderr.write(`permission_request send to ${chat_id} failed: ${e}\n`)
       })
