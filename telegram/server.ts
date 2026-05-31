@@ -83,6 +83,22 @@ process.on('uncaughtException', err => {
 // Strict: no bare yes/no (conversational), no prefix/suffix chatter.
 const PERMISSION_REPLY_RE = /^\s*(y|yes|n|no)\s+([a-km-z]{5})\s*$/i
 
+// Harness/CLI-only slash commands. Channels deliver messages as TEXT — Claude
+// Code only executes slash commands typed at the local prompt, never from
+// channel input (confirmed: there is no channel notification/field to run a
+// harness command remotely). Forwarding e.g. "/clear" would just hand the model
+// a string it can't act on (it can't wipe its own context), so we intercept
+// these and explain instead of relaying a confusing no-op. Commands the model
+// CAN act on as text (/mcp, /context, /review, …) are intentionally absent.
+const HARNESS_ONLY_COMMANDS = new Set([
+  'clear', 'compact', 'rewind', 'resume', 'model', 'config', 'settings',
+  'permissions', 'cost', 'usage', 'stats', 'doctor', 'login', 'logout',
+  'quit', 'exit', 'memory', 'agents', 'ide', 'vim', 'terminal-setup',
+  'export', 'privacy-settings', 'output-style', 'add-dir', 'hooks',
+])
+// First slash-token of a message: "/clear", "/model opus", "/clear@MyBot".
+const SLASH_COMMAND_RE = /^\/([a-zA-Z][a-zA-Z0-9_-]*)(?:@\w+)?(?=\s|$)/
+
 const bot = new Bot(TOKEN)
 let botUsername = ''
 
@@ -1006,6 +1022,32 @@ async function handleInbound(
       void bot.api.setMessageReaction(chat_id, msgId, [
         { type: 'emoji', emoji: emoji as ReactionTypeEmoji['emoji'] },
       ]).catch(() => {})
+    }
+    return
+  }
+
+  // Harness-only command intercept: e.g. "/clear" can't run over a channel —
+  // the harness executes slash commands only at the local prompt, while the
+  // bridge forwards messages as text. Reply with an explanation instead of
+  // forwarding a no-op the model can't honor (it can't clear its own context).
+  const cmd = SLASH_COMMAND_RE.exec(text)?.[1]?.toLowerCase()
+  if (cmd && HARNESS_ONLY_COMMANDS.has(cmd)) {
+    const resetHint =
+      cmd === 'clear' || cmd === 'compact'
+        ? ' To reset context, run /clear in the terminal running this session, or restart it.'
+        : ''
+    void bot.api
+      .sendMessage(
+        chat_id,
+        `⚠️ /${cmd} is a local Claude Code command — it can't run over the Telegram bridge. ` +
+          `Channels forward your messages to the session as text; the harness only executes ` +
+          `slash commands typed at the local prompt.${resetHint}`,
+      )
+      .catch(() => {})
+    if (msgId != null) {
+      void bot.api
+        .setMessageReaction(chat_id, msgId, [{ type: 'emoji', emoji: '🤷' as ReactionTypeEmoji['emoji'] }])
+        .catch(() => {})
     }
     return
   }
